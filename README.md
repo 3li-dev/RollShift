@@ -1,4 +1,4 @@
-# 🎈 Blank app template
+# 🎞️ RollShift AI
 
 A simple Streamlit app template for you to modify!
 
