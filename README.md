@@ -1,6 +1,6 @@
 # 🎞️ RollShift AI
 
-Developed By Ali for AfterHours.BH
+Developed By Ali 
 
 ### How to run it on your own machine
 
