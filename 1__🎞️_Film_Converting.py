@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-# Function to find base color using the 99th percentile of brightness
+#Function to find base color using the 99th percentile of brightness
 def find_base(neg):
     flat_img = neg.reshape(-1, 3)
     brightness = np.sum(flat_img, axis=1)
@@ -11,7 +11,7 @@ def find_base(neg):
     white_sample = np.mean(flat_img[idx], axis=0)
     return white_sample
 
-# Function to invert the negative image with enhanced color balancing
+#Function to invert the negative image with enhanced color balancing
 def invert(neg, base):
     b, g, r = cv2.split(neg)
     b = np.clip((b / base[0]) * 255, 0, 255)
@@ -20,7 +20,7 @@ def invert(neg, base):
     res = cv2.merge((b.astype(np.uint8), g.astype(np.uint8), r.astype(np.uint8)))
     return 255 - res
 
-# Function to apply gamma correction
+#Function to apply gamma correction
 def adjust_gamma(image, gamma):
     invGamma = 1.0 / gamma
     table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
@@ -58,8 +58,8 @@ if 'manual_mode' not in st.session_state:
 if 'processed_image' not in st.session_state:
     st.session_state.processed_image = None
 
-# Streamlit UI
-st.title("Rollshift AI ")
+# UI
+st.title("Rollshift AI")
 uploaded_file = st.file_uploader("Upload a film scan", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
@@ -67,23 +67,32 @@ if uploaded_file is not None:
     image = np.array(image)
     rawscan = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     
-    # Processing steps with default gamma
+    
     base_color = find_base(rawscan)
     inverted_image = invert(rawscan, base_color)
+    
+
     white_balanced_image = apply_white_balance(inverted_image)
+ 
+
     gamma_corrected_image = adjust_gamma(white_balanced_image, gamma=0.5)
     st.session_state.processed_image = gamma_corrected_image  # Save the processed image in session state
-    
-    # Display auto-adjusted image only if manual mode is off
+    step_images = [rawscan, white_balanced_image, gamma_corrected_image, ]
+    # Display auto-adjusted image only if manual mode is off 
     if not st.session_state.manual_mode:
-        st.image([image, cv2.cvtColor(st.session_state.processed_image, cv2.COLOR_BGR2RGB)],
-                 caption=["Raw Scan", "Auto-Adjusted Image"], use_container_width=True)
-    
+        
+
+        
+     st.image([image, cv2.cvtColor(st.session_state.processed_image, cv2.COLOR_BGR2RGB)],
+              caption=["Raw Scan", "Auto-Adjusted Image"], use_container_width=True)
+        #st.image(image, caption="Uploaded the scan sucessfully", use_container_width=True)
+        #st.image(white_balanced_image, caption="Adjusted White Balance", use_container_width=True)
     # Button to enter Manual Mode
-    if st.button("Manual Mode"):
+     if st.button("Manual Mode"):
         st.session_state.manual_mode = True  # Enable manual mode
     
     # Show manual adjustments only in manual mode
+    
     if st.session_state.manual_mode:
         st.subheader("Manual Adjustments")
         
