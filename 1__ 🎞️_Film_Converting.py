@@ -59,7 +59,7 @@ if 'processed_image' not in st.session_state:
     st.session_state.processed_image = None
 
 # Streamlit UI
-st.title("Film Processing App")
+st.title("Rollshift AI ")
 uploaded_file = st.file_uploader("Upload a film scan", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
