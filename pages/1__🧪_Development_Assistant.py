@@ -52,7 +52,12 @@ def run_timer(step_name, duration, agitation_interval=60, agitation_duration=10)
     st.success(f"{step_name} Complete!")
 
 # Streamlit UI
-st.title("CineStill CS41 Film Development Assistant")
+st.title("Film Development Assistant 🧪")
+# Chemistry Process
+option = st.selectbox(
+    "Select your chemistry process",
+    ("CineStill C-41 Two Bath Process"),
+)
 
 # Input for temperature
 temperature = st.number_input("Enter your chemical temperature (°C)", min_value=30.0, max_value=40.0, value=39.0, step=0.1)
