@@ -115,3 +115,5 @@ if uploaded_file is not None:
 
         # Display manually adjusted image
         st.image(processed_image_manual, caption="Manually Adjusted Image", use_container_width=True)
+        st.balloons()
+        st
