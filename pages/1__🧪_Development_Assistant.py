@@ -2,8 +2,9 @@ import streamlit as st
 import time
 import base64
 from datetime import timedelta
+import uuid
 
-# Function to play audio in Streamlit using base64 encoding
+# Function to autoplay audio
 def autoplay_audio(file_path: str):
     with open(file_path, "rb") as f:
         data = f.read()
@@ -15,66 +16,85 @@ def autoplay_audio(file_path: str):
             """
         st.markdown(md, unsafe_allow_html=True)
 
-# Function to run the timer with agitation alerts
+# Function to run a timer with agitation alerts
 def run_timer(step_name, duration, agitation_interval=60, agitation_duration=10):
-    st.subheader(f"{step_name} - {str(timedelta(seconds=duration))}")
+    st.markdown(f"<h2 style='text-align: center;'>{step_name} - {timedelta(seconds=duration)}</h2>", unsafe_allow_html=True)
     
     start_time = time.time()
     end_time = start_time + duration
-
-    time_display = st.empty()  # Container for updating time remaining
-    agitation_alert = st.empty()  # Container for showing/hiding agitation alerts
-
-    last_displayed_time = -1  # Prevents redundant updates
-
+    
+    time_display = st.empty()
+    agitation_alert = st.empty()
+    
+    last_displayed_time = None
+    
     while time.time() < end_time:
         elapsed = int(time.time() - start_time)
         remaining = int(end_time - time.time())
-
-        # Update the displayed remaining time only once per second
+        
         if remaining != last_displayed_time:
-            time_display.metric(label="Time Remaining", value=str(timedelta(seconds=remaining)))
+            time_display.markdown(f"<h3 style='text-align: center;'>⏳ Time Remaining: {timedelta(seconds=remaining)}</h3>", unsafe_allow_html=True)
             last_displayed_time = remaining
-
-        # Trigger agitation at specified intervals
-        if elapsed % agitation_interval == 0 and elapsed != 0:
-            agitation_alert.warning(f"Agitate Now! ({elapsed // agitation_interval} agitation(s) done)")
+        
+        if agitation_interval > 0 and elapsed % agitation_interval == 0 and elapsed > 0:
+            agitation_alert.warning(f"⚠️ Agitate Now! ({elapsed // agitation_interval} agitation(s) done)")
+            autoplay_audio("agitation.mp3")  # Play sound
             
-            # Play beep continuously for the agitation duration
-            for _ in range(agitation_duration):
-                autoplay_audio("agitation_beep.mp3")  
-                time.sleep(1)  # Ensure the sound plays for 10 seconds
+            # Non-blocking wait for agitation duration
+            agitation_end = time.time() + agitation_duration
+            while time.time() < agitation_end:
+                time_display.markdown(f"<h3 style='text-align: center;'>⏳ Time Remaining: {timedelta(seconds=int(end_time - time.time()))}</h3>", unsafe_allow_html=True)
+                time.sleep(1)
+            
+            agitation_alert.empty()
+        
+        time.sleep(1)
+    
+    st.success(f"✅ {step_name} Complete!")
+    st.session_state.step_index += 1
+    st.rerun()
 
-            agitation_alert.empty()  # Remove the agitation alert after 10 seconds
+# Streamlit UI Setup
+st.title("🎞️ Film Development Assistant 🧪")
 
-        time.sleep(1)  # Sleep for 1 second before the next iteration
+# Select Chemistry Process
+st.selectbox("Select your chemistry process", ["CineStill C-41 Two Bath Process"])
 
-    st.success(f"{step_name} Complete!")
+# Temperature Input
+temperature = st.number_input("🌡️ Enter your chemical temperature (°C)", 30.0, 40.0, 39.0, 0.1)
 
-# Streamlit UI
-st.title("Film Development Assistant 🧪")
-# Chemistry Process
-option = st.selectbox(
-    "Select your chemistry process",
-    ("CineStill C-41 Two Bath Process"),
-)
+# Film Development Steps
+steps = [
+    ("Pre-Soak", 60),
+    ("Color Developer", 210, 30, 10),
+    ("Blix (Bleach + Fix)", 480, 30, 10),
+    ("Final Rinse", 180, 0, 0)
+]
 
-# Input for temperature
-temperature = st.number_input("Enter your chemical temperature (°C)", min_value=30.0, max_value=40.0, value=39.0, step=0.1)
+if "step_index" not in st.session_state or st.session_state.step_index is None:
+    st.session_state.step_index = None
 
-# Start development process
-if st.button("Start Development Process"):
-    st.info("Step 1: Pre-Soak for 1 minute")
-    run_timer("Pre-Soak", 60)
-
-    st.info("Step 2: Color Developer")
-    dev_time = 210  # Example development time, adjust as needed
-    run_timer("Color Developer", dev_time, agitation_interval=30, agitation_duration=10)
-
-    st.info("Step 3: Blix (Bleach + Fix)")
-    run_timer("Blix", 480, agitation_interval=30, agitation_duration=10)
-
-    st.info("Step 4: Final Rinse")
-    run_timer("Final Rinse", 180, agitation_interval=0)  # No agitation needed
-
-    st.success("Film Development Complete! Dry your film and enjoy your negatives.")
+if st.session_state.step_index is None:
+    if st.button("▶️ Start Development Process", use_container_width=True):
+        st.session_state.step_index = 0
+        st.rerun()
+elif st.session_state.step_index < len(steps):
+    step = steps[st.session_state.step_index]
+    st.info(f"🔹 Step {st.session_state.step_index + 1}: {step[0]}")
+    
+    if "step_running" not in st.session_state:
+        st.session_state.step_running = False
+    
+    if not st.session_state.step_running:
+        if st.button("▶️ Start Step", use_container_width=True):
+            st.session_state.step_running = True
+            agitation_values = (60, 10) if len(step) < 4 else step[2:]
+            run_timer(step[0], step[1], *agitation_values)
+    
+    if st.session_state.step_running:
+        if st.button("⏭️ Skip Step", use_container_width=True):
+            st.session_state.step_index += 1
+            st.session_state.step_running = False
+            st.rerun()
+else:
+    st.success("🎉 Film Development Complete! Dry your film and enjoy your negatives.")
