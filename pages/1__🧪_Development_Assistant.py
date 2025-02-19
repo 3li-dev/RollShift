@@ -55,13 +55,13 @@ def run_timer(step_name, duration, agitation_interval=60, agitation_duration=10)
     st.rerun()
 
 # Streamlit UI Setup
-st.title("🎞️ Film Development Assistant 🧪")
+st.title("Film Development Assistant 🧪")
 
 # Select Chemistry Process
 st.selectbox("Select your chemistry process", ["CineStill C-41 Two Bath Process"])
 
 # Temperature Input
-temperature = st.number_input("🌡️ Enter your chemical temperature (°C)", 30.0, 40.0, 39.0, 0.1)
+temperature = st.number_input("Enter your chemical's temperature (°C)", 30.0, 40.0, 39.0, 0.1)
 
 # Film Development Steps
 steps = [
