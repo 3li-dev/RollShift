@@ -16,6 +16,17 @@ def autoplay_audio(file_path: str):
             """
         st.markdown(md, unsafe_allow_html=True)
 
+# Function to calculate adjusted development time
+def adjust_time(base_time, push_pull):
+    adjustments = {
+        -2: 0.65,  # Pull -2 stops (reduce by 35%)
+        -1: 0.80,  # Pull -1 stop (reduce by 20%)
+         0: 1.00,  # Normal
+         1: 1.30,  # Push +1 stop (increase by 30%)
+         2: 1.50   # Push +2 stops (increase by 50%)
+    }
+    return int(base_time * adjustments.get(push_pull, 1))
+
 # Function to run a timer with agitation alerts
 def run_timer(step_name, duration, agitation_interval=60, agitation_duration=10):
     st.markdown(f"<h2 style='text-align: center;'>{step_name} - {timedelta(seconds=duration)}</h2>", unsafe_allow_html=True)
@@ -38,9 +49,8 @@ def run_timer(step_name, duration, agitation_interval=60, agitation_duration=10)
         
         if agitation_interval > 0 and elapsed % agitation_interval == 0 and elapsed > 0:
             agitation_alert.warning(f"⚠️ Agitate Now! ({elapsed // agitation_interval} agitation(s) done)")
-            autoplay_audio("agitation.mp3")  # Play sound
+            autoplay_audio("media/sound_effects/agitation.mp3")
             
-            # Non-blocking wait for agitation duration
             agitation_end = time.time() + agitation_duration
             while time.time() < agitation_end:
                 time_display.markdown(f"<h3 style='text-align: center;'>⏳ Time Remaining: {timedelta(seconds=int(end_time - time.time()))}</h3>", unsafe_allow_html=True)
@@ -63,10 +73,13 @@ st.selectbox("Select your chemistry process", ["CineStill C-41 Two Bath Process"
 # Temperature Input
 temperature = st.number_input("Enter your chemical temperature (°C)", 30.0, 40.0, 39.0, 0.1)
 
+# Push/Pull Input
+push_pull = st.selectbox("Select Push/Pull Processing", [-2, -1, 0, 1, 2], format_func=lambda x: f"{x:+} Stop(s)")
+
 # Film Development Steps
 steps = [
     ("Pre-Soak", 60),
-    ("Color Developer", 210, 30, 10),
+    ("Color Developer", adjust_time(210, push_pull), 30, 10),
     ("Blix (Bleach + Fix)", 480, 30, 10),
     ("Final Rinse", 180, 0, 0)
 ]
@@ -98,4 +111,3 @@ elif st.session_state.step_index < len(steps):
             st.rerun()
 else:
     st.success("🎉 Film Development Complete! Dry your film and enjoy your negatives.")
-    

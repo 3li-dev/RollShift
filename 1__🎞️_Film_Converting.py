@@ -2,8 +2,10 @@ import streamlit as st
 import cv2
 import numpy as np
 from PIL import Image
+from io import BytesIO
+from streamlit_image_comparison import image_comparison
 
-#Function to find base color using the 99th percentile of brightness
+# Function to find base color using the 99th percentile of brightness
 def find_base(neg):
     flat_img = neg.reshape(-1, 3)
     brightness = np.sum(flat_img, axis=1)
@@ -11,7 +13,7 @@ def find_base(neg):
     white_sample = np.mean(flat_img[idx], axis=0)
     return white_sample
 
-#Function to invert the negative image with enhanced color balancing
+# Function to invert the negative image with enhanced color balancing
 def invert(neg, base):
     b, g, r = cv2.split(neg)
     b = np.clip((b / base[0]) * 255, 0, 255)
@@ -20,7 +22,7 @@ def invert(neg, base):
     res = cv2.merge((b.astype(np.uint8), g.astype(np.uint8), r.astype(np.uint8)))
     return 255 - res
 
-#Function to apply gamma correction
+# Function to apply gamma correction
 def adjust_gamma(image, gamma):
     invGamma = 1.0 / gamma
     table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
@@ -44,7 +46,7 @@ def apply_white_balance(image):
     ])
     return balanced_img
 
-# Function to apply RGB adjustments
+# Function to adjust RGB channels
 def adjust_rgb(image, r_factor, g_factor, b_factor):
     b, g, r = cv2.split(image)
     b = np.clip(b * b_factor, 0, 255).astype(np.uint8)
@@ -59,7 +61,7 @@ if 'processed_image' not in st.session_state:
     st.session_state.processed_image = None
 
 # UI
-st.title("Rollshift AI")
+st.title("🎞️ Rollshift AI - Film Negative Processor")
 uploaded_file = st.file_uploader("Upload a film scan", type=["jpg", "jpeg", "png"])
 
 if uploaded_file is not None:
@@ -67,39 +69,37 @@ if uploaded_file is not None:
     image = np.array(image)
     rawscan = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
     
-    
+    # Automatic Processing Pipeline (Using the original defaults)
     base_color = find_base(rawscan)
     inverted_image = invert(rawscan, base_color)
-    
-
     white_balanced_image = apply_white_balance(inverted_image)
- 
-
     gamma_corrected_image = adjust_gamma(white_balanced_image, gamma=0.5)
-    st.session_state.processed_image = gamma_corrected_image  # Save the processed image in session state
-    step_images = [rawscan, white_balanced_image, gamma_corrected_image, ]
-    # Display auto-adjusted image only if manual mode is off 
-    if not st.session_state.manual_mode:
-        
 
-        
-     st.image([image, cv2.cvtColor(st.session_state.processed_image, cv2.COLOR_BGR2RGB)],
-              caption=["Raw Scan", "Auto-Adjusted Image"], use_container_width=True)
-        #st.image(image, caption="Uploaded the scan sucessfully", use_container_width=True)
-        #st.image(white_balanced_image, caption="Adjusted White Balance", use_container_width=True)
-    # Button to enter Manual Mode
-     if st.button("Manual Mode"):
-        st.session_state.manual_mode = True  # Enable manual mode
+    st.session_state.processed_image = gamma_corrected_image  # Save the processed image in session state
     
+    # Display auto-adjusted image only if manual mode is off
+    if not st.session_state.manual_mode:
+        # Before-After Image Comparison (Raw Scan vs. Auto-Processed)
+        image_comparison(
+            img1=cv2.cvtColor(rawscan, cv2.COLOR_BGR2RGB), 
+            img2=cv2.cvtColor(st.session_state.processed_image, cv2.COLOR_BGR2RGB), 
+            label1="Raw Scan", 
+            label2="Auto-Processed"
+        )
+
+
+        # Button to enter Manual Mode
+        if st.button("Manual Mode"):
+            st.session_state.manual_mode = True  # Enable manual mode
+
     # Show manual adjustments only in manual mode
-    
     if st.session_state.manual_mode:
         st.subheader("Manual Adjustments")
         
         # Layout sliders side by side for better control
         col1, col2, col3 = st.columns(3)
         with col1:
-            gamma_value = st.slider("Gamma", 0.5, 2.5, 0.5, 0.1)
+            gamma_value = st.slider("Gamma", 0.5, 2.5, 0.5, 0.05)
         with col2:
             r_factor = st.slider("Red", 0.5, 2.0, 1.0, 0.05)
         with col3:
@@ -115,5 +115,3 @@ if uploaded_file is not None:
 
         # Display manually adjusted image
         st.image(processed_image_manual, caption="Manually Adjusted Image", use_container_width=True)
-        st.balloons()
-        st
