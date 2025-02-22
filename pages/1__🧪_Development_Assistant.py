@@ -4,6 +4,23 @@ import base64
 from datetime import timedelta
 import uuid
 
+
+def show_spotify_embed():
+        with st.expander("🎵 Listen While You Develop (Spotify Playlist)"):
+            st.markdown(
+                """
+                <div style="display: flex; justify-content: center; align-items: center; margin-top: 20px;">
+                    <iframe style="border-radius:12px; max-width: 100%;"
+                        src="https://open.spotify.com/embed/playlist/7z4MKJZ1RvsSw3C0LLSE4Q?utm_source=generator&theme=0" 
+                        width="100%" height="352" frameborder="0" allowfullscreen="" 
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                        loading="lazy">
+                    </iframe>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
 # Function to autoplay audio
 def autoplay_audio(file_path: str):
     with open(file_path, "rb") as f:
@@ -67,6 +84,7 @@ def run_timer(step_name, duration, agitation_interval=60, agitation_duration=10)
 # Streamlit UI Setup
 st.title("Film Development Assistant 🧪")
 
+
 # Select Chemistry Process
 st.selectbox("Select your chemistry process", ["CineStill C-41 Two Bath Process"])
 
@@ -75,6 +93,11 @@ temperature = st.number_input("Enter your chemical temperature (°C)", 30.0, 40.
 
 # Push/Pull Input
 push_pull = st.selectbox("Select Push/Pull Processing", [-2, -1, 0, 1, 2], format_func=lambda x: f"{x:+} Stop(s)")
+
+st.markdown("---")
+show_spotify_embed()
+st.markdown("---")
+
 
 # Film Development Steps
 steps = [
