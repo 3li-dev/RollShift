@@ -51,6 +51,11 @@ with st.expander("🎨 **4. RGB Channel Adjustments for Fine-Tuning**"):
     - **How?** Users can manually adjust **Red, Green, and Blue (RGB) levels** to refine the output.
     """)
 
+with st.expander("📐 **5. Image Sharpening**"):
+    st.write("""
+    - **Why?** Sometimes, Image quality may be reduced during scanning, transferring of files or even conversion.
+    - **How?** The Algorithm applies a **sharpening kernel** to enhance the image quality.
+    """)
 st.markdown("---")
 
 st.header("Pushing & Pulling Film 🧪")
@@ -68,7 +73,7 @@ st.header("🎛️ Try It Yourself!")
 
 st.write("Ready to experiment? Click below to **test film conversion interactively**!")
 
-if st.button("🔬 Experiment with Film Conversion!"):
+if st.button("Experiment with RollShift 🔍!"):
     st.switch_page("1__🎞️_Film_Converting.py")
 
 st.markdown("---")

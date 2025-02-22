@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from PIL import Image
 from io import BytesIO
+import time
 from streamlit_image_comparison import image_comparison
 
 st.markdown("""
@@ -65,14 +66,19 @@ def adjust_rgb(image, r_factor, g_factor, b_factor):
     r = np.clip(r * r_factor, 0, 255).astype(np.uint8)
     return cv2.merge((b, g, r))
 
-if 'manual_mode' not in st.session_state:
-    st.session_state.manual_mode = False
-if 'processed_image' not in st.session_state:
-    st.session_state.processed_image = None
+# Function to sharpen image
+def sharp(image):
+    kernel = np.array([[0, -0.25, 0], 
+                    [-0.25, 2, -0.25], 
+                    [0, -0.25, 0]])    
+    sharp_img = cv2.filter2D(image, -1, kernel)
+    return sharp_img
 
-# UI
 st.title("RollShift AI - Film Negative Processor 🎞️")
 st.write("Where Innovation Meets Tradition! ✨")
+
+if 'manual_mode' not in st.session_state:
+    st.session_state.manual_mode = False
 
 uploaded_file = st.file_uploader("Upload a film scan", type=["jpg", "jpeg", "png"])
 
@@ -80,65 +86,57 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file)
     image = np.array(image)
     rawscan = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    base_color = find_base(rawscan)
-    inverted_image = invert(rawscan, base_color)
-    white_balanced_image = apply_white_balance(inverted_image)
-    gamma_corrected_image = adjust_gamma(white_balanced_image, gamma=0.5)
+    
+    # Animated step-by-step processing
+    processing_steps = [
+        ("Raw Scan", rawscan),
+        ("Inverted Image", invert(rawscan, find_base(rawscan))),
+        ("White Balanced Image", apply_white_balance(invert(rawscan, find_base(rawscan)))),
+        ("Gamma Corrected Image", adjust_gamma(apply_white_balance(invert(rawscan, find_base(rawscan))), gamma=0.5)),
+        ("Sharpened Image", sharp(adjust_gamma(apply_white_balance(invert(rawscan, find_base(rawscan))), gamma=0.5)))
+    ]
+    
+    placeholder = st.empty()
+    for label, img in processing_steps:
+        placeholder.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), caption=label, use_container_width=True)
+        time.sleep(1)  # Smooth transition effect
+    
+    # Clear placeholder after showing steps
+    placeholder.empty()
+    
+    final_image = processing_steps[-1][1]
+    
+    # Image Comparison at the End
+    image_comparison(
+        img1=cv2.cvtColor(rawscan, cv2.COLOR_BGR2RGB), 
+        img2=cv2.cvtColor(final_image, cv2.COLOR_BGR2RGB), 
+        label1="Raw Scan", 
+        label2="Final Processed Image"
+    )
+    
+    processed_pil = Image.fromarray(cv2.cvtColor(final_image, cv2.COLOR_BGR2RGB))
+    buf = BytesIO()
+    processed_pil.save(buf, format="JPEG")
+    byte_im = buf.getvalue()
 
-    st.session_state.processed_image = gamma_corrected_image  # Save in session state
-    if not st.session_state.manual_mode:
-        image_comparison(
-            img1=cv2.cvtColor(rawscan, cv2.COLOR_BGR2RGB), 
-            img2=cv2.cvtColor(st.session_state.processed_image, cv2.COLOR_BGR2RGB), 
-            label1="Raw Scan", 
-            label2="AI-Processed"
-        )
-
-        processed_pil = Image.fromarray(cv2.cvtColor(st.session_state.processed_image, cv2.COLOR_BGR2RGB))
-        buf = BytesIO()
-        processed_pil.save(buf, format="JPEG")
-        byte_im = buf.getvalue()
-
-        st.download_button(
-            label="Download Processed Image 📥",
-            data=byte_im,
-            file_name="processed_image.jpg",
-            mime="image/jpeg"
-        )
-
-        if st.button(" Switch to Manual Mode 🛠️"):
-            st.session_state.manual_mode = True  # Enables manual mode
-
-    # ---- Manual Adjustments Mode ----
+    st.download_button(
+        label="Download Processed Image 📥",
+        data=byte_im,
+        file_name="processed_image.jpg",
+        mime="image/jpeg"
+    )
+    
+    if st.button("Switch to Manual Mode 🛠️"):
+        st.session_state.manual_mode = True
+    
     if st.session_state.manual_mode:
         st.subheader("🎨 Manual Adjustments")
-        
-        # Layout sliders side by side
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            gamma_value = st.slider("Gamma", 0.5, 2.5, 0.5, 0.05)
-        with col2:
-            r_factor = st.slider("Red", 0.5, 2.0, 1.0, 0.05)
-        with col3:
-            g_factor = st.slider("Green", 0.5, 2.0, 1.0, 0.05)
-        
+        gamma_value = st.slider("Gamma", 0.5, 2.5, 1.0, 0.05)
+        r_factor = st.slider("Red", 0.5, 2.0, 1.0, 0.05)
+        g_factor = st.slider("Green", 0.5, 2.0, 1.0, 0.05)
         b_factor = st.slider("Blue", 0.5, 2.0, 1.0, 0.05)
-
-        gamma_corrected_image = adjust_gamma(white_balanced_image, gamma_value)
-        rgb_adjusted_image = adjust_rgb(gamma_corrected_image, r_factor, g_factor, b_factor)
-        processed_image_manual = cv2.cvtColor(rgb_adjusted_image, cv2.COLOR_BGR2RGB)
-
-        # Display manually adjusted image
-        st.image(processed_image_manual, caption="Manually Adjusted Image", use_container_width=True)
-
-        processed_manual_pil = Image.fromarray(processed_image_manual)
-        buf_manual = BytesIO()
-        processed_manual_pil.save(buf_manual, format="JPEG")
-        byte_im_manual = buf_manual.getvalue()
-
-        st.download_button(
-            label="📥 Download Manually Adjusted Image",
-            data=byte_im_manual,
-            file_name="manually_adjusted_image.jpg",
-            mime="image/jpeg"
-        )
+        
+        adjusted_image = adjust_gamma(final_image, gamma_value)
+        adjusted_image = adjust_rgb(adjusted_image, r_factor, g_factor, b_factor)
+        
+        st.image(cv2.cvtColor(adjusted_image, cv2.COLOR_BGR2RGB), caption="Manually Adjusted Image", use_container_width=True)

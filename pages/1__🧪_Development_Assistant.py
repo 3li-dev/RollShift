@@ -2,7 +2,6 @@ import streamlit as st
 import time
 import base64
 from datetime import timedelta
-import uuid
 
 
 def show_spotify_embed():
@@ -92,7 +91,8 @@ st.selectbox("Select your chemistry process", ["CineStill C-41 Two Bath Process"
 temperature = st.number_input("Enter your chemical temperature (°C)", 30.0, 40.0, 39.0, 0.1)
 
 # Push/Pull Input
-push_pull = st.selectbox("Select Push/Pull Processing", [-2, -1, 0, 1, 2], format_func=lambda x: f"{x:+} Stop(s)")
+push_pull = st.selectbox("Select Push/Pull Processing", [-2, -1, 0, 1, 2], format_func=lambda x: f"{x:+} Stops")
+st.write('Set to zero for standard process')
 
 st.markdown("---")
 show_spotify_embed()
@@ -126,6 +126,7 @@ elif st.session_state.step_index < len(steps):
             st.session_state.step_running = True
             agitation_values = (60, 10) if len(step) < 4 else step[2:]
             run_timer(step[0], step[1], *agitation_values)
+            v_l = True
     
     if st.session_state.step_running:
         if st.button("⏭️ Skip Step", use_container_width=True):
