@@ -4,10 +4,33 @@ import cv2
 from PIL import Image
 from streamlit_image_comparison import image_comparison
 
-st.set_page_config(page_title="RollShift AI - Film Processing", layout="wide")
 
-st.title('🎞️ RollShift AI - Film Processing Explained ✨')
-st.write("Explore the advanced techniques used in **RollShift AI**. 🚀")
+st.set_page_config(
+        page_title="RollShift AI",
+        page_icon="media/brand/RS_Fav.png",
+        layout="centered",
+ 
+)
+
+
+st.markdown(
+    """
+    <style>
+        section[data-testid="stSidebar"] {
+            width: 200px !important; # Set the width to your desired value
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Display the logo in the sidebar with a small size
+st.logo("media/brand/RS_logo.png", size="large")  # Replace 'logo.png' with your image path or URL
+
+
+
+st.title("🎞️ RollShift AI: Explained")
+
 
 st.markdown("---")
 

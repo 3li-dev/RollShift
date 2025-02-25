@@ -5,6 +5,27 @@ from PIL import Image
 from io import BytesIO
 import time
 from streamlit_image_comparison import image_comparison
+st.set_page_config(
+        page_title="RollShift AI",
+        page_icon="media/brand/RS_Fav.png",
+        layout="centered",
+ 
+)
+
+# Display the logo in the sidebar with a small size
+st.logo("media/brand/RS_logo.png", size="large")  # Replace 'logo.png' with your image path or URL
+
+
+st.markdown(
+    """
+    <style>
+        section[data-testid="stSidebar"] {
+            width: 200px !important; # Set the width to your desired value
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown("""
     <style>
@@ -77,6 +98,7 @@ def sharp(image):
 st.title("RollShift AI - Film Negative Processor 🎞️")
 st.write("Where Innovation Meets Tradition! ✨")
 
+
 if 'manual_mode' not in st.session_state:
     st.session_state.manual_mode = False
 
@@ -96,13 +118,12 @@ if uploaded_file is not None:
         ("Sharpened Image", sharp(adjust_gamma(apply_white_balance(invert(rawscan, find_base(rawscan))), gamma=0.5)))
     ]
     
-    placeholder = st.empty()
-    for label, img in processing_steps:
-        placeholder.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), caption=label, use_container_width=True)
-        time.sleep(1)  # Smooth transition effect
-    
-    # Clear placeholder after showing steps
-    placeholder.empty()
+    with st.spinner("📸 Processing your film... Hang tight!"):
+        placeholder = st.empty()
+        for label, img in processing_steps:
+            placeholder.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), caption=label, use_container_width=True)
+            time.sleep(1)  # Smooth transition effect
+        placeholder.empty()
     
     final_image = processing_steps[-1][1]
     

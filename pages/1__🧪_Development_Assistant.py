@@ -3,6 +3,27 @@ import time
 import base64
 from datetime import timedelta
 
+st.set_page_config(
+        page_title="RollShift AI",
+        page_icon="media/brand/RS_Fav.png",
+        layout="centered",
+        
+    )
+
+# Display the logo in the sidebar with a small size
+st.logo("media/brand/RS_logo.png", size="large")  # Replace 'logo.png' with your image path or URL
+
+st.markdown(
+    """
+    <style>
+        section[data-testid="stSidebar"] {
+            width: 200px !important; # Set the width to your desired value
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 def show_spotify_embed():
         with st.expander("🎵 Listen While You Develop (Spotify Playlist)"):
@@ -64,7 +85,7 @@ def run_timer(step_name, duration, agitation_interval=60, agitation_duration=10)
             last_displayed_time = remaining
         
         if agitation_interval > 0 and elapsed % agitation_interval == 0 and elapsed > 0:
-            agitation_alert.warning(f"⚠️ Agitate Now! ({elapsed // agitation_interval} agitation(s) done)")
+            agitation_alert.warning(f"⚠️ Agitate Now! ({elapsed // agitation_interval} agitations done)")
             autoplay_audio("media/sound_effects/agitation.mp3")
             
             agitation_end = time.time() + agitation_duration
