@@ -4,6 +4,8 @@ import numpy as np
 from PIL import Image
 from io import BytesIO
 import time
+import base64
+
 from streamlit_image_comparison import image_comparison
 st.set_page_config(
         page_title="RollShift AI",
@@ -11,6 +13,14 @@ st.set_page_config(
         layout="centered",
  
 )
+# Function to encode font file
+def get_base64_font(font_path):
+    with open(font_path, "rb") as font_file:
+        return base64.b64encode(font_file.read()).decode("utf-8")
+
+# Convert OTF file to Base64
+font_base64 = get_base64_font("media/fonts/Bristol.otf")  # Adjust the path
+
 
 # Display the logo in the sidebar with a small size
 st.logo("media/brand/RS_logo.png", size="large")  # Replace 'logo.png' with your image path or URL
@@ -38,6 +48,27 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+st.markdown(
+    """
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Bristol&display=swap');
+        section[data-testid="stSidebar"] {
+            width: 200px !important;
+        }
+        .stDownloadButton>button, .stButton>button {
+            width: 100% !important;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 10px;
+        }
+        h1 {
+            font-family: 'Bristol', sans-serif;
+        }
+    </style>
+    <h1 style="text-align: center;">RollShift AI</h1>
+    """,
+    unsafe_allow_html=True,
+)
 # Function to find base color using the 99th percentile of brightness
 def find_base(neg):
     flat_img = neg.reshape(-1, 3)
@@ -60,6 +91,13 @@ def adjust_gamma(image, gamma):
     invGamma = 1.0 / gamma
     table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
     return cv2.LUT(image, table)
+
+
+def auto_gamma_correction(image):
+    mean_intensity = np.mean(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
+    gamma = np.clip(1.5 - (mean_intensity / 128), 0.4, 2.5)  # Adjust dynamically
+    return adjust_gamma(image, gamma)
+
 
 # Function to apply white balance using Gray World Assumption
 def apply_white_balance(image):
@@ -87,6 +125,7 @@ def adjust_rgb(image, r_factor, g_factor, b_factor):
     r = np.clip(r * r_factor, 0, 255).astype(np.uint8)
     return cv2.merge((b, g, r))
 
+
 # Function to sharpen image
 def sharp(image):
     kernel = np.array([[0, -0.25, 0], 
@@ -95,8 +134,28 @@ def sharp(image):
     sharp_img = cv2.filter2D(image, -1, kernel)
     return sharp_img
 
-st.title("RollShift AI - Film Negative Processor 🎞️")
-st.write("Where Innovation Meets Tradition! ✨")
+
+
+
+st.markdown(
+    """
+   <p style="text-align: center; font-size: 16px;">Where Innovation Meets Tradition! ✨</p>
+    """,
+    unsafe_allow_html=True
+)
+st.markdown(f"""
+    <style>
+        @font-face {{
+            font-family: 'Bristol';
+            src: url(data:font/otf;base64,{font_base64}) format('opentype');
+        }}
+        h1 {{
+            font-family: 'Bristol', sans-serif !important;
+        }}
+    </style>
+""", unsafe_allow_html=True)
+
+# Display title using the Bristol font
 
 
 if 'manual_mode' not in st.session_state:
@@ -141,7 +200,7 @@ if uploaded_file is not None:
     byte_im = buf.getvalue()
 
     st.download_button(
-        label="Download Processed Image 📥",
+        label="Download Your Positive 📥",
         data=byte_im,
         file_name="processed_image.jpg",
         mime="image/jpeg"
