@@ -68,14 +68,17 @@ st.markdown(
     <h1 style="text-align: center;">RollShift AI</h1>
     """,
     unsafe_allow_html=True,
+    
 )
 # Function to find base color using the 99th percentile of brightness
 def find_base(neg):
-    flat_img = neg.reshape(-1, 3)
-    brightness = np.sum(flat_img, axis=1)
-    idx = np.argsort(brightness)[-int(0.01 * len(brightness)):]  
-    white_sample = np.mean(flat_img[idx], axis=0)
-    return white_sample
+    flat_img = neg.reshape(-1, 3)  # Flatten image into (N, 3) array
+    brightness = np.sum(flat_img, axis=1)  # Compute brightness for each pixel
+    idx = np.argsort(brightness)[-int(0.01 * len(brightness)):]  # Get top 1% brightest pixels
+    white_sample = np.mean(flat_img[idx], axis=0)  # Compute mean base color for BGR
+    return white_sample  # Returns (B, G, R) as a NumPy array
+
+
 
 # Function to invert the negative image with enhanced color balancing
 def invert(neg, base):
@@ -92,7 +95,7 @@ def adjust_gamma(image, gamma):
     table = np.array([((i / 255.0) ** invGamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
     return cv2.LUT(image, table)
 
-
+#auto gamma correction
 def auto_gamma_correction(image):
     mean_intensity = np.mean(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
     gamma = np.clip(1.5 - (mean_intensity / 128), 0.4, 2.5)  # Adjust dynamically
@@ -117,12 +120,47 @@ def apply_white_balance(image):
     ])
     return balanced_img
 
+def white_patch_retinex(image):
+    max_b = np.max(image[:, :, 0])
+    max_g = np.max(image[:, :, 1])
+    max_r = np.max(image[:, :, 2])
+
+    scale_b = 255 / max_b
+    scale_g = 255 / max_g
+    scale_r = 255 / max_r
+
+    balanced_img = cv2.merge([
+        np.clip(image[:, :, 0] * scale_b, 0, 255).astype(np.uint8),
+        np.clip(image[:, :, 1] * scale_g, 0, 255).astype(np.uint8),
+        np.clip(image[:, :, 2] * scale_r, 0, 255).astype(np.uint8)
+    ])
+    
+    return balanced_img
+
+def apply_clahe(image):
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    l = clahe.apply(l)
+
+    return cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
+
+def auto_color_balance(image):
+    white_balanced = apply_white_balance(image)
+    retinex_balanced = white_patch_retinex(white_balanced)
+    final_image = apply_clahe(retinex_balanced)
+    
+    return final_image
+
+
 # Function to adjust RGB channels
 def adjust_rgb(image, r_factor, g_factor, b_factor):
     b, g, r = cv2.split(image)
     b = np.clip(b * b_factor, 0, 255).astype(np.uint8)
     g = np.clip(g * g_factor, 0, 255).astype(np.uint8)
     r = np.clip(r * r_factor, 0, 255).astype(np.uint8)
+
     return cv2.merge((b, g, r))
 
 
@@ -135,6 +173,43 @@ def sharp(image):
     return sharp_img
 
 
+def apply_lab_white_balance(image):
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+
+    # Auto-correct color channels
+    a_mean = np.mean(a)
+    b_mean = np.mean(b)
+
+    a = np.clip(a - (a_mean - 128), 0, 255)  # Adjust red-green balance
+    b = np.clip(b - (b_mean - 128), 0, 255)  # Adjust blue-yellow balance
+
+    corrected = cv2.merge([l, a.astype(np.uint8), b.astype(np.uint8)])
+    return cv2.cvtColor(corrected, cv2.COLOR_LAB2BGR)
+
+
+def dynamic_red_reduction(image):
+    b, g, r = cv2.split(image)
+
+    avg_b = np.mean(b)
+    avg_g = np.mean(g)
+    avg_r = np.mean(r)
+
+    # Calculate how much red is over-dominating
+    red_balance = np.clip(1.0 - ((avg_r - ((avg_b + avg_g) / 2)) / 255), 0.7, 1.0)
+
+    # Apply correction only if red is dominant
+    if avg_r > (avg_b + avg_g) / 2:
+        r = np.clip(r * red_balance, 0, 255)
+
+    return cv2.merge((b.astype(np.uint8), g.astype(np.uint8), r.astype(np.uint8)))
+
+
+def auto_color_balance(image):
+    lab_balanced = apply_lab_white_balance(image)  # Step 1: LAB-based balance
+    red_fixed = dynamic_red_reduction(lab_balanced)  # Step 2: Adjust red dynamically
+    final_image = apply_clahe(red_fixed)  # Step 3: CLAHE for better contrast
+    return final_image
 
 
 st.markdown(
@@ -172,8 +247,8 @@ if uploaded_file is not None:
     processing_steps = [
         ("Raw Scan", rawscan),
         ("Inverted Image", invert(rawscan, find_base(rawscan))),
-        ("White Balanced Image", apply_white_balance(invert(rawscan, find_base(rawscan)))),
-        ("Gamma Corrected Image", adjust_gamma(apply_white_balance(invert(rawscan, find_base(rawscan))), gamma=0.5)),
+        ("Color Balanced Image", auto_color_balance(invert(rawscan, find_base(rawscan)))),
+        ("Gamma Corrected Image", auto_gamma_correction(apply_white_balance(invert(rawscan, find_base(rawscan))))),
         ("Sharpened Image", sharp(adjust_gamma(apply_white_balance(invert(rawscan, find_base(rawscan))), gamma=0.5)))
     ]
     
@@ -191,7 +266,7 @@ if uploaded_file is not None:
         img1=cv2.cvtColor(rawscan, cv2.COLOR_BGR2RGB), 
         img2=cv2.cvtColor(final_image, cv2.COLOR_BGR2RGB), 
         label1="Raw Scan", 
-        label2="Final Processed Image"
+        label2="RollShift Processed"
     )
     
     processed_pil = Image.fromarray(cv2.cvtColor(final_image, cv2.COLOR_BGR2RGB))
