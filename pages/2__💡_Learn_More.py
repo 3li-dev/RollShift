@@ -62,10 +62,12 @@ with st.expander("🎛️ **2. Grey World Assumption for Color Balancing**"):
     - **How?** We assume the average color in an image should be **neutral gray** and balance the color channels accordingly.
     """)
 
+
 with st.expander("🌟 **3. Gamma Correction for Proper Exposure**"):
     st.write("""
     - **Why?** Film scans often appear too dark or too bright.
-    - **How?** We apply **gamma correction (default 0.5)** to adjust brightness and contrast dynamically.
+    - **How?** The program dynamically calculates the gamma value based on the mean intensity of the grayscale image.
+                and ensures it is with a reasonable range.
     """)
 
 with st.expander("🎨 **4. RGB Channel Adjustments for Fine-Tuning**"):
@@ -79,6 +81,7 @@ with st.expander("📐 **5. Image Sharpening**"):
     - **Why?** Sometimes, Image quality may be reduced during scanning, transferring of files or even conversion.
     - **How?** The Algorithm applies a **sharpening kernel** to enhance the image quality.
     """)
+
 st.markdown("---")
 
 st.header("Pushing & Pulling Film 🧪")
