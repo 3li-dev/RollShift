@@ -11,7 +11,7 @@ st.set_page_config(
         page_title="RollShift AI",
         page_icon="media/brand/RS_Fav.png",
         layout="centered",
- 
+
 )
 # Function to encode font file
 def get_base64_font(font_path):
@@ -68,7 +68,7 @@ st.markdown(
     <h1 style="text-align: center;">RollShift AI</h1>
     """,
     unsafe_allow_html=True,
-    
+
 )
 # Function to find base color using the 99th percentile of brightness
 def find_base(neg):
@@ -104,22 +104,23 @@ def auto_gamma_correction(image):
 
 # Function to apply white balance using Gray World Assumption
 def apply_white_balance(image):
-    avg_b = np.mean(image[:, :, 0])
-    avg_g = np.mean(image[:, :, 1])
-    avg_r = np.mean(image[:, :, 2])
-    avg_gray = (avg_b + avg_g + avg_r) / 3
+    avg_b = np.mean(image[:, :, 0])  # Blue channel
+    avg_g = np.mean(image[:, :, 1])  # Green channel
+    avg_r = np.mean(image[:, :, 2])  # Red channel
+    avg_gray = (avg_b + avg_g + avg_r) / 3  # Calculate average intensity (gray)
 
+    # Calculate scaling factors
     scale_b = avg_gray / avg_b
     scale_g = avg_gray / avg_g
     scale_r = avg_gray / avg_r
 
+    # Apply white balance scaling
     balanced_img = cv2.merge([
         np.clip(image[:, :, 0] * scale_b, 0, 255).astype(np.uint8),
         np.clip(image[:, :, 1] * scale_g, 0, 255).astype(np.uint8),
         np.clip(image[:, :, 2] * scale_r, 0, 255).astype(np.uint8)
     ])
     return balanced_img
-
 def white_patch_retinex(image):
     max_b = np.max(image[:, :, 0])
     max_g = np.max(image[:, :, 1])
@@ -134,25 +135,29 @@ def white_patch_retinex(image):
         np.clip(image[:, :, 1] * scale_g, 0, 255).astype(np.uint8),
         np.clip(image[:, :, 2] * scale_r, 0, 255).astype(np.uint8)
     ])
-    
+
     return balanced_img
 
 def apply_clahe(image):
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
     l, a, b = cv2.split(lab)
 
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))  # Adjust clipLimit to control contrast
     l = clahe.apply(l)
 
     return cv2.cvtColor(cv2.merge([l, a, b]), cv2.COLOR_LAB2BGR)
 
 def auto_color_balance(image):
+    # Apply white balance once
     white_balanced = apply_white_balance(image)
-    retinex_balanced = white_patch_retinex(white_balanced)
-    final_image = apply_clahe(retinex_balanced)
-    
-    return final_image
 
+    # Apply Retinex for color and detail enhancement
+    retinex_balanced = white_patch_retinex(white_balanced)
+
+    # Apply CLAHE to enhance contrast and details
+    final_image = apply_clahe(retinex_balanced)
+
+    return final_image
 
 # Function to adjust RGB channels
 def adjust_rgb(image, r_factor, g_factor, b_factor):
@@ -166,9 +171,9 @@ def adjust_rgb(image, r_factor, g_factor, b_factor):
 
 # Function to sharpen image
 def sharp(image):
-    kernel = np.array([[0, -0.25, 0], 
-                    [-0.25, 2, -0.25], 
-                    [0, -0.25, 0]])    
+    kernel = np.array([[0, -0.25, 0],
+                    [-0.25, 2, -0.25],
+                    [0, -0.25, 0]])
     sharp_img = cv2.filter2D(image, -1, kernel)
     return sharp_img
 
@@ -187,29 +192,65 @@ def apply_lab_white_balance(image):
     corrected = cv2.merge([l, a.astype(np.uint8), b.astype(np.uint8)])
     return cv2.cvtColor(corrected, cv2.COLOR_LAB2BGR)
 
+def dynamic_lut(image):
+    # Convert the image to grayscale to analyze its brightness distribution
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-def dynamic_red_reduction(image):
-    b, g, r = cv2.split(image)
+    # Calculate histogram
+    hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
 
-    avg_b = np.mean(b)
-    avg_g = np.mean(g)
-    avg_r = np.mean(r)
+    # Calculate cumulative distribution (CDF)
+    cdf = hist.cumsum()
+    cdf_normalized = cdf * float(hist.max()) / cdf.max()
 
-    # Calculate how much red is over-dominating
-    red_balance = np.clip(1.0 - ((avg_r - ((avg_b + avg_g) / 2)) / 255), 0.7, 1.0)
+    # Use the CDF to calculate an adaptive LUT (adjusting shadows, midtones, and highlights)
+    lut = np.interp(np.arange(256), cdf_normalized, np.arange(256))
+    lut = lut.astype(np.uint8)
 
-    # Apply correction only if red is dominant
-    if avg_r > (avg_b + avg_g) / 2:
-        r = np.clip(r * red_balance, 0, 255)
-
-    return cv2.merge((b.astype(np.uint8), g.astype(np.uint8), r.astype(np.uint8)))
-
+    # Apply the LUT to each channel
+    result_image = cv2.LUT(image, lut)
+    return result_image
 
 def auto_color_balance(image):
     lab_balanced = apply_lab_white_balance(image)  # Step 1: LAB-based balance
-    red_fixed = dynamic_red_reduction(lab_balanced)  # Step 2: Adjust red dynamically
-    final_image = apply_clahe(red_fixed)  # Step 3: CLAHE for better contrast
+    final_image = apply_clahe(lab_balanced)  # Step 3: CLAHE for better contrast
     return final_image
+
+
+def contrast_adjust(image):
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+
+    # Apply CLAHE to enhance the L-channel (brightness) without overexposing
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))  # Adjust clipLimit to control contrast
+    l = clahe.apply(l)
+
+    # Merge channels back and convert to BGR
+    lab = cv2.merge([l, a, b])
+    adjusted_image = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+
+    return adjusted_image
+
+
+def blur(image, kernel_size=(9, 9)):
+    """
+    Applies a slight Gaussian blur to smooth the image.
+
+    Parameters:
+    - image: Input image to be blurred.
+    - kernel_size: The size of the Gaussian kernel (default is (5, 5)).
+
+    Returns:
+    - Blurred image.
+    """
+    return cv2.GaussianBlur(image, kernel_size, 0)
+
+def denoise(image, strength=3):
+    """
+    Reduces noise in the image using Non-Local Means Denoising.
+    """
+    return cv2.fastNlMeansDenoisingColored(image, None, strength, strength, 7, 21)
+
 
 
 st.markdown(
@@ -242,56 +283,64 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file)
     image = np.array(image)
     rawscan = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-    
+
     # Animated step-by-step processing
     processing_steps = [
-        ("Raw Scan", rawscan),
-        ("Inverted Image", invert(rawscan, find_base(rawscan))),
-        ("Color Balanced Image", auto_color_balance(invert(rawscan, find_base(rawscan)))),
-        ("Gamma Corrected Image", auto_gamma_correction(apply_white_balance(invert(rawscan, find_base(rawscan))))),
-        ("Sharpened Image", sharp(adjust_gamma(apply_white_balance(invert(rawscan, find_base(rawscan))), gamma=0.5)))
+        ("Raw Scan", rawscan),  # Step 1: Raw input image
+        ("Inverted Image", invert(rawscan, find_base(rawscan))),  # Step 2: Invert the image
+        ("Color Balanced Image", auto_color_balance(invert(rawscan, find_base(rawscan)))),  # Step 3: Apply color balance
+        ("Gamma Corrected Image", auto_gamma_correction(auto_color_balance(invert(rawscan, find_base(rawscan))))),  # Step 4: Gamma correction
+        ("Denoised Image", denoise(auto_gamma_correction(auto_color_balance(invert(rawscan, find_base(rawscan)))))),
+
+        #("Sharpened Image",sharp(denoise(auto_gamma_correction(auto_color_balance(invert(rawscan, find_base(rawscan))))))),  # Step 5: Sharpen the image
+        #("Blurred Image", blur(sharp(auto_gamma_correction(auto_color_balance(invert(rawscan, find_base(rawscan))))))),  # Step 6: Apply blur to smooth the image
     ]
-    
+
     with st.spinner("📸 Processing your film... Hang tight!"):
         placeholder = st.empty()
         for label, img in processing_steps:
             placeholder.image(cv2.cvtColor(img, cv2.COLOR_BGR2RGB), caption=label, use_container_width=True)
             time.sleep(1)  # Smooth transition effect
         placeholder.empty()
-    
+
     final_image = processing_steps[-1][1]
-    
+
     # Image Comparison at the End
     image_comparison(
-        img1=cv2.cvtColor(rawscan, cv2.COLOR_BGR2RGB), 
-        img2=cv2.cvtColor(final_image, cv2.COLOR_BGR2RGB), 
-        label1="Raw Scan", 
+        img1=cv2.cvtColor(rawscan, cv2.COLOR_BGR2RGB),
+        img2=cv2.cvtColor(final_image, cv2.COLOR_BGR2RGB),
+        label1="Raw Scan",
         label2="RollShift Processed"
     )
-    
+
     processed_pil = Image.fromarray(cv2.cvtColor(final_image, cv2.COLOR_BGR2RGB))
     buf = BytesIO()
     processed_pil.save(buf, format="JPEG")
     byte_im = buf.getvalue()
 
+
+
+    if st.button("Switch to Manual Mode 🛠️"):
+        st.session_state.manual_mode = True
+
+    
     st.download_button(
         label="Download Your Positive 📥",
         data=byte_im,
         file_name="processed_image.jpg",
         mime="image/jpeg"
     )
-    
-    if st.button("Switch to Manual Mode 🛠️"):
-        st.session_state.manual_mode = True
-    
+
+
+
     if st.session_state.manual_mode:
         st.subheader("🎨 Manual Adjustments")
         gamma_value = st.slider("Gamma", 0.5, 2.5, 1.0, 0.05)
         r_factor = st.slider("Red", 0.5, 2.0, 1.0, 0.05)
         g_factor = st.slider("Green", 0.5, 2.0, 1.0, 0.05)
         b_factor = st.slider("Blue", 0.5, 2.0, 1.0, 0.05)
-        
+
         adjusted_image = adjust_gamma(final_image, gamma_value)
         adjusted_image = adjust_rgb(adjusted_image, r_factor, g_factor, b_factor)
-        
+
         st.image(cv2.cvtColor(adjusted_image, cv2.COLOR_BGR2RGB), caption="Manually Adjusted Image", use_container_width=True)

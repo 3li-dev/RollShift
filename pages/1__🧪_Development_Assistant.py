@@ -106,7 +106,7 @@ st.title("Film Development Assistant 🧪")
 
 
 # Select Chemistry Process
-st.selectbox("Select your chemistry process", ["CineStill C-41 Two Bath Process"])
+st.selectbox("Select your chemical process", ["CineStill C-41 Two Bath Process"])
 
 # Temperature Input
 temperature = st.number_input("Enter your chemical temperature (°C)", 30.0, 40.0, 39.0, 0.1)
