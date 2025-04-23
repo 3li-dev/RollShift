@@ -304,7 +304,7 @@ if uploaded_file is not None:
         placeholder.empty()
 
     final_image = processing_steps[-1][1]
-
+    
     # Image Comparison at the End
     image_comparison(
         img1=cv2.cvtColor(rawscan, cv2.COLOR_BGR2RGB),
@@ -324,23 +324,35 @@ if uploaded_file is not None:
         st.session_state.manual_mode = True
 
     
-    st.download_button(
-        label="Download Your Positive 📥",
-        data=byte_im,
-        file_name="processed_image.jpg",
-        mime="image/jpeg"
-    )
+    if not st.session_state.manual_mode:
+        st.download_button(
+            label="Download Your Positive 📥",
+            data=byte_im,
+            file_name="processed_image.jpg",
+            mime="image/jpeg"
+        )
 
 
+if st.session_state.manual_mode:
+    st.subheader("🎨 Manual Adjustments")
 
-    if st.session_state.manual_mode:
-        st.subheader("🎨 Manual Adjustments")
+    col1, col2 = st.columns([1, 1.2])  # More narrow than before
+
+    with col1:
         gamma_value = st.slider("Gamma", 0.5, 2.5, 1.0, 0.05)
         r_factor = st.slider("Red", 0.5, 2.0, 1.0, 0.05)
         g_factor = st.slider("Green", 0.5, 2.0, 1.0, 0.05)
         b_factor = st.slider("Blue", 0.5, 2.0, 1.0, 0.05)
 
+    with col2:
         adjusted_image = adjust_gamma(final_image, gamma_value)
         adjusted_image = adjust_rgb(adjusted_image, r_factor, g_factor, b_factor)
-
         st.image(cv2.cvtColor(adjusted_image, cv2.COLOR_BGR2RGB), caption="Manually Adjusted Image", use_container_width=True)
+
+
+    st.download_button(
+            label="Download Your Positive 📥",
+            data=byte_im,
+            file_name="processed_image.jpg",
+            mime="image/jpeg"
+        )
