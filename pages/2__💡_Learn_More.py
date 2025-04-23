@@ -36,8 +36,8 @@ st.markdown("---")
 
 st.subheader("Film Processing - Before & After 📷")
 
-negative_path = "/workspaces/RollShift/media/samples/phoenix_sample_neg.jpg"
-positive_path = "/workspaces/RollShift/media/samples/phoenix_sample_positive.jpg"
+negative_path ="/workspaces/RollShift/media/samples/phoenix-200_negative_sample_1.jpg"
+positive_path = "/workspaces/RollShift/media/samples/phoenix-200_positive_sample_1.jpg"
 
 negative_image = Image.open(negative_path)
 positive_image = Image.open(positive_path)
